@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
     // 🔴 مهم جدًا لـ GitHub Pages
     base: '/timaa/',
 
+
     server: {
       port: 3000,
       host: '0.0.0.0',
