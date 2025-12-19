@@ -83,6 +83,58 @@ const App: React.FC = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [forceEnter, setForceEnter] = useState(false);
 
+  // --- آلية تتبع الجلسات النشطة (المتصلون حالياً) ---
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // توليد معرف فريد لهذا التبويب
+    const sessionId = Math.random().toString(36).substring(7);
+    
+    const updateHeartbeat = () => {
+      const sessionsRaw = localStorage.getItem('active_sessions');
+      let sessions: any = sessionsRaw ? JSON.parse(sessionsRaw) : {};
+      const now = Date.now();
+
+      // تنظيف الجلسات القديمة (أكثر من 15 ثانية)
+      const cleaned: any = {};
+      Object.keys(sessions).forEach(u => {
+        cleaned[u] = {};
+        Object.keys(sessions[u]).forEach(sid => {
+          if (now - sessions[u][sid] < 15000) {
+            cleaned[u][sid] = sessions[u][sid];
+          }
+        });
+      });
+
+      // إضافة الجلسة الحالية
+      if (!cleaned[currentUser.username]) cleaned[currentUser.username] = {};
+      cleaned[currentUser.username][sessionId] = now;
+
+      localStorage.setItem('active_sessions', JSON.stringify(cleaned));
+    };
+
+    updateHeartbeat();
+    const interval = setInterval(updateHeartbeat, 5000);
+
+    const cleanup = () => {
+      const raw = localStorage.getItem('active_sessions');
+      if (raw) {
+        let sessions = JSON.parse(raw);
+        if (sessions[currentUser.username]) {
+          delete sessions[currentUser.username][sessionId];
+          localStorage.setItem('active_sessions', JSON.stringify(sessions));
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', cleanup);
+      cleanup();
+    };
+  }, [currentUser]);
+
   useEffect(() => {
     localStorage.setItem('system_users', JSON.stringify(allUsers));
   }, [allUsers]);
